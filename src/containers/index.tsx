@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import React, { useEffect, useRef, useState, useLayoutEffect, useCallback } from 'react';
 
 import _ from 'lodash';
 import $script from 'scriptjs';
@@ -26,27 +26,28 @@ const Home: React.FC = () => {
 
   // first render
   useEffect(() => {
-    // 事件处理
+    // event handler
     function messageHandler(event: MessageEvent) {
       const { type, payload } = event.data;
-      if (/^edit-a-/.test(type)) {
-        console.log('received-from-admin:', type, payload);
+      if (/^mango-iframe_/.test(type)) {
+        console.log('received-message-from-mango-admin:', type, payload);
       }
       switch(type) {
-        case 'edit-a-common':
+        case 'mango-iframe_load-common-component':
           // load common js
           $script(payload.editJS, () => {
-            sendMessage('edit-i-common_loaded');
+            sendMessage('mango-iframe_common-component-loaded');
           });
           break;
-        case 'edit-a-module_all':
-          // Load scripts
+        case 'mango-iframe_load-components':
+          // load scripts
           const scriptFiles = _.uniq<string>(payload.map((module: Module) => _.get(module, 'component.editJS')).filter((item: string) => !!item));
           // reset refs
           refs.current = payload.map((module: Module) => ({
             moduleID: module.moduleID,
             ref: React.createRef<HTMLDivElement>()
           }));
+          // in general, scriptFiles will always be with length
           if (scriptFiles.length) {
             $script(scriptFiles, () => {
               setModules(payload)
@@ -55,7 +56,7 @@ const Home: React.FC = () => {
             setModules(payload);
           }
           break;
-        case 'edit-a-module_single':
+        case 'mango-iframe_update-component-data':
           setModules(modules => {
             const copyModules = [...modules];
             const updateIndex = copyModules.findIndex(module => module.moduleID === payload.moduleID);
@@ -67,12 +68,12 @@ const Home: React.FC = () => {
           break;
       }
     }
-    // 监听
+    // listen
     window.addEventListener('message', messageHandler ,false);
     // ready
-    sendMessage('edit-i-ready');
+    sendMessage('mango-iframe_page-ready');
 
-    // 注销
+    // destory
     return () => window.removeEventListener('message', messageHandler);
   }, []);
 
@@ -117,7 +118,8 @@ const Home: React.FC = () => {
     return list;
   };
 
-  const toggelPageResize = () => {
+  // page resize handler
+  const pageResizeHandler = useCallback(() => {
     const layoutModules: any[] = [];
     // refs entries
     refs.current.forEach(item => {
@@ -130,15 +132,15 @@ const Home: React.FC = () => {
       });
     });
     console.log('****', layoutModules);
-    sendMessage('edit-i-rendered', {
+    sendMessage('mango-iframe_page-resized', {
       pageHeight: pageRef.current?.getBoundingClientRect().height,
       modules: layoutModules
     });
-  }
+  }, []);
 
   // layout change
   useLayoutEffect(() => {
-    toggelPageResize();
+    pageResizeHandler();
   });
 
   return (
