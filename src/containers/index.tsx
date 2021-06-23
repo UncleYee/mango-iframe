@@ -115,7 +115,7 @@ const Home: React.FC = () => {
         }
       }
     })
-    return list.length ? list : <p>请拖拽组件到容器内</p>;
+    return list.length ? list : <div>请拖拽组件到容器内</div>;
   };
 
   // page resize handler
